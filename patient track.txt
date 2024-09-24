@@ -1,0 +1,66 @@
+#include <Servo.h>
+#include <LiquidCrystal_I2C.h>
+#include <SPI.h>
+#include <MFRC522.h>
+
+#define SS_PIN 10
+#define RST_PIN 9
+String UID1 = "A3 2D AE 24"; // Card 1 UID
+String UID2 = "B1 C8 F3 0A"; // Card 2 UID
+byte lock = 0;
+
+Servo servo;
+MFRC522 rfid(SS_PIN, RST_PIN);
+
+void setup() {
+  Serial.begin(9600);
+  servo.write(70);
+  servo.attach(3);
+  SPI.begin();
+  rfid.PCD_Init();
+}
+
+void loop() {
+  Serial.println("Welcome!");
+  Serial.println("Put your card");
+
+  if (!rfid.PICC_IsNewCardPresent())
+    return;
+  if (!rfid.PICC_ReadCardSerial())
+    return;
+
+  Serial.println("Scanning");
+  Serial.print("NUID tag is :");
+  String ID = "";
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    ID.concat(String(rfid.uid.uidByte[i] < 0x10 ? " 0" : " "));
+    ID.concat(String(rfid.uid.uidByte[i], HEX));
+    delay(300);
+  }
+  ID.toUpperCase();
+
+  if (ID.substring(1) == UID1 && lock == 0) {
+    servo.write(70);
+    Serial.println("Kid one is snatched, Door is locked");
+    delay(1500);
+    lock = 1;
+  } else if (ID.substring(1) == UID1 && lock == 1) {
+    servo.write(160);
+    Serial.println("Door is open");
+    delay(1500);
+    lock = 0;
+  } else if (ID.substring(1) == UID2 && lock == 0) {
+    servo.write(70);
+    Serial.println("Kid two is snatched, Door is locked");
+    delay(1500);
+    lock = 1;
+  } else if (ID.substring(1) == UID2 && lock == 1) {
+    servo.write(160);
+    Serial.println("Door is open");
+    delay(1500);
+    lock = 0;
+  } else {
+    Serial.println("Wrong card!");
+    delay(1500);
+  }
+}
